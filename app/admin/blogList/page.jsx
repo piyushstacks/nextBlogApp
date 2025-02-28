@@ -2,6 +2,7 @@
 import BlogTableItem from '@/components/AdminComponents/BlogTableItem';
 import React, { useEffect, useState } from 'react';
 import axios from "axios";
+import { toast } from 'react-toastify';
 
 const page = () => {
     const [blogs, setBlogs] = useState([]);
@@ -9,6 +10,25 @@ const page = () => {
       const response = await axios.get('/api/blog');
       setBlogs(response.data.blogs);
     }
+
+    const deleteBlog = async (mongoId) => {
+      try {
+        const response = await axios.delete('/api/blog', {
+          params: { id: mongoId },
+        });
+    
+        if (response.status === 200) {
+          toast.success(response.data.msg || "Blog Deleted Successfully"); // Show success toast
+          await fetchBlogs(); // Ensure re-fetch is complete before updating state
+        } else {
+          toast.error(response.data.msg || "Failed to delete blog");
+        }
+      } catch (error) {
+        console.error("Error deleting blog:", error);
+        toast.error("An error occurred while deleting the blog");
+      }
+    };
+    
 
     useEffect(()=>{
       fetchBlogs();
@@ -37,7 +57,7 @@ const page = () => {
           </thead>
 <tbody>
   {blogs.map((item,index)=>{
-    return <BlogTableItem key={index} mongoId={item._id} title={item.title} author={item.author} authorImg={item.authorImg} date={item.date}/>
+    return <BlogTableItem key={index} mongoId={item._id} title={item.title} author={item.author} authorImg={item.authorImg} date={item.date} deleteBlog={deleteBlog}/>
   })}
 </tbody>
         </table>

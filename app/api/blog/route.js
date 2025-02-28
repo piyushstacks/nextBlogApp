@@ -66,8 +66,37 @@ export async function POST(request) {
 }
 
 
-export async function DELETE(request){
-  const id = await request.nextUrl.searchParams.get('id');
-  const blog = await BlogModel.findById(id);
-  fs.unlink( )
+export async function DELETE(request) {
+  try {
+    await ConnectDB();
+
+    const id = request.nextUrl.searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ success: false, msg: "Blog ID is required" }, { status: 400 });
+    }
+
+    const blog = await BlogModel.findById(id);
+    if (!blog) {
+      return NextResponse.json({ success: false, msg: "Blog not found" }, { status: 404 });
+    }
+
+    // Resolve correct image path
+    const imagePath = path.join(process.cwd(), "public", blog.image.replace(/^\/+/, "")); // Remove leading slash if exists
+
+    // Check if the file exists before trying to delete it
+    if (fs.existsSync(imagePath)) {
+      await fs.promises.unlink(imagePath);
+    }
+
+    await BlogModel.findByIdAndDelete(id);
+    console.log(`✅ Blog Deleted: ${id}`);
+
+    return NextResponse.json({ success: true, msg: "Blog Deleted" });
+  } catch (error) {
+    console.error("❌ Error deleting blog:", error);
+    return NextResponse.json(
+      { success: false, msg: "An error occurred", error: error.message },
+      { status: 500 }
+    );
+  }
 }
