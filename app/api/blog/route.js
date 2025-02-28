@@ -3,6 +3,7 @@ import BlogModel from "@/lib/models/BlogModel";
 import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+const fs = require('fs');
 
 //API ENDPOINT TO GET ALL BLOGS
 export async function GET(request) {
@@ -54,6 +55,7 @@ export async function POST(request) {
     console.log("✅ Blog Saved:", newBlog._id);
 
     return NextResponse.json({ success: true, msg: "Blog Added" });
+
   } catch (error) {
     console.error("❌ Error:", error);
     return NextResponse.json(
@@ -61,4 +63,11 @@ export async function POST(request) {
       { status: 500 }
     );
   }
+}
+
+
+export async function DELETE(request){
+  const id = await request.nextUrl.searchParams.get('id');
+  const blog = await BlogModel.findById(id);
+  fs.unlink( )
 }
