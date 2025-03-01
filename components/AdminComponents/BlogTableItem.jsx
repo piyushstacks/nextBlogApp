@@ -16,7 +16,7 @@ const BlogTableItem = ({authorImg, title, author, date, deleteBlog, mongoId}) =>
         <td className='px-6 py-4'>
             {BlogDate.toDateString()}
         </td>
-        <td className="px-6 py-3">
+        <td className="px-6 py-3 cursor-pointer">
         {/* ✅ Button should be inside a <td> */}
         <button
           onClick={() => deleteBlog(mongoId)}
