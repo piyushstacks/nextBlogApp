@@ -6,11 +6,13 @@ import { ToastContainer } from "react-toastify";
 
 export default function Home() {
   return (
-    <>
-      <ToastContainer theme="dark"/>
+    <div className="min-h-screen flex flex-col"> 
+    <ToastContainer theme="dark"/>
       <Header/>
-      <BlogList/>
+      <main className="flex-grow"> {/* Expands to push footer down */}
+        <BlogList/>
+      </main>
       <Footer/>
-    </>
+    </div>
   );
 }
