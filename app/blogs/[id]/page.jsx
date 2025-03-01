@@ -65,7 +65,9 @@ const Page = () => {
           width={1280}
           height={720}
         />
-        <p>{data.description}</p>
+        <div className="blog-content" dangerouslySetInnerHTML={{__html:data.description}}>
+        </div>
+
         <div className="my-24">
           <p className="text-black font-semibold my-4">Share this article on social media</p>
           <div className="flex gap-4">
