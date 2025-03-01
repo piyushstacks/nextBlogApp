@@ -39,7 +39,7 @@ const page = () => {
       <h1>All Blogs</h1>
       <div className='relative h-[80vh] max-w-[850px] overflow-x-auto mt-4 border border-gray-400 scrollbar-hide'>
         <table className='w-full text-sm text-gray-500'>
-          <thead className='text-sm textbg-gray-700 text-left uppercase bg-gray-500'>
+        <thead className='text-sm text-white text-left uppercase bg-gray-700'>
             <tr>
               <th scope='col' className='hidden sm:block px-6 py-3'>
                 Author name
