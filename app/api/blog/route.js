@@ -1,101 +1,128 @@
 import { ConnectDB } from "@/lib/config/db";
 import BlogModel from "@/lib/models/BlogModel";
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-const fs = require('fs');
+import cloudinary from "@/lib/config/cloudinary";
 
-//API ENDPOINT TO GET ALL BLOGS
-export async function GET(request) {
-  const blogId = request.nextUrl.searchParams.get("id");
-  if (blogId) {
-    const blog = await BlogModel.findById(blogId);
-    return NextResponse.json(blog);
-  }
-  else {
-    const blogs = await BlogModel.find({});
-    return NextResponse.json({ blogs });
-  }
-}
-
-
-//API ENDPOINT FOR UPLOADING BLOGS
 export async function POST(request) {
   try {
     await ConnectDB();
+    console.log("Connected to database");
 
     const formData = await request.formData();
-    const timestamp = Date.now();
+    const file = formData.get("image");
 
-    const image = formData.get("image");
-    if (!image) {
+    if (!file) {
       return NextResponse.json({ success: false, msg: "Image is required" }, { status: 400 });
     }
 
-    const imageByteData = await image.arrayBuffer();
-    const buffer = Buffer.from(imageByteData);
+    // Convert image to Buffer
+    const fileBuffer = await file.arrayBuffer();
+    const mimeType = file.type || 'image/jpeg'; // Fallback if type is missing
 
-    const publicDir = path.join(process.cwd(), "public");
-    await mkdir(publicDir, { recursive: true }); // Ensure 'public' exists
-    const imagePath = path.join(publicDir, `${timestamp}_${image.name}`);
-    await writeFile(imagePath, buffer);
+    console.log("Uploading to Cloudinary with type:", mimeType);
+    console.log("Cloudinary config:", {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key_length: process.env.CLOUDINARY_API_KEY ? process.env.CLOUDINARY_API_KEY.length : 0
+    });
+    
+    try {
+      const uploadedImage = await cloudinary.v2.uploader.upload(
+        `data:${mimeType};base64,${Buffer.from(fileBuffer).toString("base64")}`,
+        { folder: "blogs" }
+      );
 
-    const imgUrl = `/${timestamp}_${image.name}`;
+      if (!uploadedImage.secure_url) {
+        throw new Error("Cloudinary upload failed");
+      }
 
-    const blogData = {
-      title: formData.get("title"),
-      description: formData.get("description"),
-      category: formData.get("category"),
-      author: formData.get("author"),
-      image: imgUrl,
-      authorImg: formData.get("authorImg"),
-    };
+      console.log("Image uploaded successfully:", uploadedImage.secure_url);
 
-    const newBlog = await BlogModel.create(blogData);
-    console.log("✅ Blog Saved:", newBlog._id);
+      // Save blog details in MongoDB
+      const blogData = {
+        title: formData.get("title"),
+        description: formData.get("description"),
+        category: formData.get("category"),
+        author: formData.get("author"),
+        image: uploadedImage.secure_url,
+        imagePublicId: uploadedImage.public_id,
+        authorImg: formData.get("authorImg"),
+      };
 
-    return NextResponse.json({ success: true, msg: "Blog Added" });
+      const newBlog = await BlogModel.create(blogData);
+      console.log("✅ Blog Saved:", newBlog._id);
 
+      return NextResponse.json({ success: true, msg: "Blog Added" });
+    } catch (cloudinaryError) {
+      console.error("Cloudinary Error:", cloudinaryError);
+      return NextResponse.json(
+        { success: false, msg: "Image upload failed", error: cloudinaryError.message },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.error("❌ POST Error:", error);
     return NextResponse.json(
-      { success: false, msg: "An error occurred", error: error.message },
+      { success: false, msg: "Failed to upload blog", error: error.message },
       { status: 500 }
     );
   }
 }
 
+export async function GET(request) {
+  try {
+    await ConnectDB();
+
+    const blogId = request.nextUrl.searchParams.get("id");
+
+    if (blogId) {
+      const blog = await BlogModel.findById(blogId);
+      if (!blog) {
+        return NextResponse.json({ success: false, msg: "Blog not found" }, { status: 404 });
+      }
+      return NextResponse.json(blog);
+    }
+
+    const blogs = await BlogModel.find({});
+    return NextResponse.json({ blogs });
+
+  } catch (error) {
+    console.error("❌ GET Error:", error);
+    return NextResponse.json(
+      { success: false, msg: "Failed to fetch blogs", error: error.message },
+      { status: 500 }
+    );
+  }
+}
 
 export async function DELETE(request) {
   try {
     await ConnectDB();
 
-    const id = request.nextUrl.searchParams.get('id');
-    if (!id) {
+    const blogId = request.nextUrl.searchParams.get('id');
+    if (!blogId) {
       return NextResponse.json({ success: false, msg: "Blog ID is required" }, { status: 400 });
     }
 
-    const blog = await BlogModel.findById(id);
+    const blog = await BlogModel.findById(blogId);
     if (!blog) {
       return NextResponse.json({ success: false, msg: "Blog not found" }, { status: 404 });
     }
 
-    // Resolve correct image path
-    const imagePath = path.join(process.cwd(), "public", blog.image.replace(/^\/+/, "")); // Remove leading slash if exists
-
-    // Check if the file exists before trying to delete it
-    if (fs.existsSync(imagePath)) {
-      await fs.promises.unlink(imagePath);
+    // Delete image from Cloudinary
+    if (blog.imagePublicId) {
+      await cloudinary.v2.uploader.destroy(blog.imagePublicId);
     }
 
-    await BlogModel.findByIdAndDelete(id);
-    console.log(`✅ Blog Deleted: ${id}`);
+    // Delete blog from MongoDB
+    await BlogModel.findByIdAndDelete(blogId);
+    console.log(`✅ Blog Deleted: ${blogId}`);
 
     return NextResponse.json({ success: true, msg: "Blog Deleted" });
+
   } catch (error) {
-    console.error("❌ Error deleting blog:", error);
+    console.error("❌ DELETE Error:", error);
     return NextResponse.json(
-      { success: false, msg: "An error occurred", error: error.message },
+      { success: false, msg: "Failed to delete blog", error: error.message },
       { status: 500 }
     );
   }

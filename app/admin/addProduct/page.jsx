@@ -258,9 +258,15 @@ const Page = () => {
       textarea.selectionEnd = newPosition;
     }, 0);
   };
-
   const onSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate image
+    if (!image) {
+      toast.error("Please select an image");
+      return;
+    }
+    
     try {
       const formData = new FormData();
       formData.append("title", data.title);
@@ -268,10 +274,16 @@ const Page = () => {
       formData.append("category", data.category);
       formData.append("author", data.author);
       formData.append("authorImg", data.authorImg);
-      if (image) {
-        formData.append("image", image);
-      }
+      formData.append("image", image);
+      
+      // Show loading toast
+      const loadingToast = toast.loading("Uploading blog...");
+      
       const response = await axios.post("/api/blog", formData);
+      
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+      
       if (response.data.success) {
         toast.success(response.data.msg);
         setData({
@@ -283,7 +295,7 @@ const Page = () => {
         });
         setImage(null);
       } else {
-        toast.error("Error");
+        toast.error(response.data.msg || "Error adding blog");
       }
     } catch (error) {
       toast.error("Something went wrong!");
