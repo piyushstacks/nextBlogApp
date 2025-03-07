@@ -9,6 +9,7 @@ export function middleware(request) {
     path === '/' || 
     path.startsWith('/sign-in') ||
     path.startsWith('/sign-up') ||
+    path.startsWith('/blogs/') ||
     (path.startsWith('/api/') && !path.startsWith('/api/admin'));
   
   // Check if user is authenticated by looking for the auth cookie
